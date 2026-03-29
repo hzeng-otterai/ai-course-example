@@ -1,9 +1,12 @@
-# Chatbot Examples for Large Language Model Course
-This repo include source code for the [Large Language Model Course](https://techlent.com/cn/application/llm).
+# Chatbot Examples
 
-## Description of folders
+Example code for building chatbots and AI agents with LLMs.
 
-- embedding_test: code to download glove embedding and using numpy library to do similarity search.
-- backend_api: code to call OpenAI APIs for chat applications
-- backend_langchain: code to use LangChain for chat applications
-- fullstack_flask: code for a full stack chat application using Flask
+## Folders
+
+- `embedding_test`: download GloVe embeddings and run similarity search with NumPy
+- `backend_api`: call OpenAI APIs for chat and agent applications; includes streaming, multi-turn, function calling, and OpenAI Agents SDK examples
+- `backend_langchain`: use LangChain for chat applications; covers prompts, RAG, memory, output parsers, tool calling, and Pinecone vector store
+- `fullstack_flask`: full-stack chat application using Flask with Docker support
+- `fullstack_flask_minimal`: minimal full-stack chat application using Flask
+- `ai_agent`: AI agent examples using the Anthropic Claude API
