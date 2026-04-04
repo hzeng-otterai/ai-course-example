@@ -153,7 +153,7 @@ def execute_function_call(tool_call):
     
     return "Function not implemented"
 
-def trip_planner_agent(user_message):
+def trip_planner_single_round(user_message):
     """Main trip planner function"""
     messages = [
         {
@@ -213,4 +213,4 @@ if __name__ == "__main__":
         print(f"\n{'='*50}")
         print(f"TEST QUERY {i}: {query}")
         print('='*50)
-        trip_planner_agent(query)
+        trip_planner_single_round(query)

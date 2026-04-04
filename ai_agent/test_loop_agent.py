@@ -5,7 +5,7 @@ from test_simple_agent import tools, execute_function_call
 
 client = OpenAI()
 
-def trip_planner_agent(user_message):
+def trip_planner_agentic_loop(user_message):
     """Enhanced trip planner with continuous tool calling loop"""
     messages = [
         {
@@ -88,5 +88,5 @@ if __name__ == "__main__":
         print(f"\n{'='*60}")
         print(f"TEST QUERY {i}: {query}")
         print('='*60)
-        trip_planner_agent(query)
+        trip_planner_agentic_loop(query)
         print("\n" + "="*60)
