@@ -21,7 +21,7 @@ tools = [{
                     "description": "Optional day for the weather forecast, e.g. 'Friday', '2024-06-14'."
                 }
             },
-            "required": ["location"],
+            "required": ["location", "day"],
             "additionalProperties": False
         }
     }
@@ -158,7 +158,7 @@ def trip_planner_single_round(user_message):
     messages = [
         {
             "role": "system", 
-            "content": "You are a helpful trip planning assistant. Help users plan their trips by checking weather, suggesting points of interest, and buying tickets when needed. Always be friendly and provide comprehensive travel advice."
+            "content": "You are a helpful trip planning assistant. Help users plan their trips by checking weather, suggesting points of interest, and buying tickets. Always be friendly and provide comprehensive travel advice."
         },
         {"role": "user", "content": user_message}
     ]
