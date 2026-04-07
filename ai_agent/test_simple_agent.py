@@ -18,7 +18,7 @@ tools = [{
                 },
                 "day": {
                     "type": "string",
-                    "description": "Optional day for the weather forecast, e.g. 'Friday', '2024-06-14'."
+                    "description": "Date for the weather forecast, e.g. 'this Friday', '2024-06-14'."
                 }
             },
             "required": ["location", "day"],

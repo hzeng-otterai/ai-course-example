@@ -1,5 +1,7 @@
 from openai import OpenAI
 import json
+import time
+from datetime import datetime
 
 from test_simple_agent import tools, execute_function_call
 
@@ -10,7 +12,7 @@ def trip_planner_agentic_loop(user_message):
     messages = [
         {
             "role": "system", 
-            "content": """You are a helpful trip planning assistant. Help users plan their trips by:
+            "content": f"""Today is {datetime.today().strftime('%Y-%m-%d')}. You are a helpful trip planning assistant. Help users plan their trips by:
             1. Checking weather conditions for destinations
             2. Suggesting relevant points of interest based on preferences
             3. Purchasing tickets for attractions when requested
@@ -56,9 +58,7 @@ def trip_planner_agentic_loop(user_message):
             print("Assistant:", assistant_message.content)
         
         # Check if there are tool calls to execute
-        if assistant_message.tool_calls:
-            print(f"\nExecuting {len(assistant_message.tool_calls)} function(s)...")
-            
+        if assistant_message.tool_calls:            
             # Add assistant message with tool calls to conversation
             messages.append(assistant_message)
             
@@ -75,8 +75,7 @@ def trip_planner_agentic_loop(user_message):
                     "content": result
                 })
 
-                # Prompt and wait for key press to continue
-                input("Press Enter to continue...")
+                time.sleep(1)
             
             # Continue the loop to get next response
             continue
@@ -91,22 +90,6 @@ def trip_planner_agentic_loop(user_message):
     if iteration >= max_iterations:
         print(f"\n⚠️ Maximum iterations ({max_iterations}) reached. Ending conversation.")
 
-# Enhanced test queries that trigger multiple tool calls
-test_queries = [
-    # Complex multi-step planning
-    "I would like to visit New York, help me arrange the trip.",
-
-    # Complex multi-step planning
-    #"I'm planning a 2 days' trip to New York, including Friday and Saturday. Please arrange the trip for me.",
-    
-    # Conditional logic trigger
-    #"Help me plan a 3 days' trip to Paris. Date is flexible. Find at least 2 Sunny or Cloudy day in the next week. Buy tickets for me.",
-]
-
 if __name__ == "__main__":
-    for i, query in enumerate(test_queries, 1):
-        print(f"\n{'='*60}")
-        print(f"TEST QUERY {i}: {query}")
-        print('='*60)
-        trip_planner_agentic_loop(query)
-        print("\n" + "="*60)
+    user_input = input("> ")
+    trip_planner_agentic_loop(user_input)
