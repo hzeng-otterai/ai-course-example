@@ -164,7 +164,7 @@ def trip_planner_single_round(user_message):
     ]
     
     completion = client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-5.4-mini",
         messages=messages,
         tools=tools
     )
@@ -193,7 +193,7 @@ def trip_planner_single_round(user_message):
         
         # Get final response with function results
         final_completion = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5.4-mini",
             messages=messages,
             tools=tools
         )

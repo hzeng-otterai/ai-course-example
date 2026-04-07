@@ -29,7 +29,7 @@ def trip_planner_agentic_loop(user_message):
         print(f"\n--- Iteration {iteration} ---")
         
         completion = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5.4-mini",
             messages=messages,
             tools=tools
         )

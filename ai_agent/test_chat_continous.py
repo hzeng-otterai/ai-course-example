@@ -1,0 +1,60 @@
+from openai import AsyncOpenAI
+import asyncio
+from datetime import datetime
+
+client = AsyncOpenAI()
+
+# Construct the system prompt
+system_prompt_template = """You are Bobby, a virtual assistant create by Huajun. Today is {today}. You provide responses to questions that are clear, straightforward, and factually accurate."""
+
+system_prompt = system_prompt_template.format(
+    today=datetime.today().strftime('%Y-%m-%d')
+)
+
+async def chat_func(history):
+
+    messages = [{"role": "system", "content": system_prompt}] + history
+    GREY_BG = "\033[48;5;252m\033[38;5;17m"
+    RESET = "\033[0m"
+    print(f"\n{GREY_BG}--- Context window ({len(messages)} messages) ---{RESET}")
+    for msg in messages:
+        print(f"{GREY_BG}[{msg['role']}]: {msg['content']}{RESET}")
+    print(f"{GREY_BG}---{RESET}\n")
+
+    result = await client.chat.completions.create(
+        model="gpt-5.4-mini",
+        messages=messages,
+        temperature=0.5,
+        stream=True,
+    )
+
+    buffer = ""
+    async for r in result:
+        next_token = r.choices[0].delta.content
+        if next_token:
+            print(next_token, flush=True, end="")
+            buffer += next_token
+
+    print("\n", flush=True)
+
+    return buffer
+
+async def continous_chat():
+    history = []
+
+    # Loop to receive user input continously
+    while(True):
+        user_input = input("> ")
+        if user_input == "exit":
+            break
+
+        history.append({"role": "user", "content": user_input})
+
+        # notice every time we call the chat function
+        # we pass all the history to the API
+        bot_response = await chat_func(history)
+
+        history.append({"role": "assistant", "content": bot_response})
+
+asyncio.run(continous_chat())
+
