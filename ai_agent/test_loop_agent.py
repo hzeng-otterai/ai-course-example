@@ -8,6 +8,38 @@ from test_simple_agent import tools, execute_function_call
 
 client = anthropic.Anthropic()
 
+GREY_BG = "\033[48;5;252m\033[38;5;17m"
+RESET = "\033[0m"
+
+def print_context_window(system, messages):
+    print(f"\n{GREY_BG}--- Context window ({len(messages) + 1} messages) ---{RESET}")
+    for t in tools:
+        params = list(t["input_schema"].get("properties", {}).keys())
+        required = t["input_schema"].get("required", [])
+        param_str = ", ".join(f"{p}{'*' if p in required else '?'}" for p in params)
+        print(f"{GREY_BG}[function_call_definition] {t['name']}({param_str}) — {t['description']}{RESET}")
+    print(f"{GREY_BG}[system]: {system}{RESET}")
+    for msg in messages:
+        role = msg["role"]
+        content = msg["content"]
+        if isinstance(content, str):
+            print(f"{GREY_BG}[{role}]: {content}{RESET}")
+        elif isinstance(content, list):
+            has_text = any(not isinstance(b, dict) and b.type == "text" for b in content)
+            if not has_text:
+                print(f"{GREY_BG}[{role}]:{RESET}")
+            for block in content:
+                if isinstance(block, dict):
+                    if block.get("type") == "tool_result":
+                        print(f"{GREY_BG}[{role} (tool_result id={block['tool_use_id']})]: {block['content']}{RESET}")
+                else:
+                    if block.type == "text":
+                        print(f"{GREY_BG}[{role}]: {block.text}{RESET}")
+                    elif block.type == "tool_use":
+                        print(f"{GREY_BG}  ↳ tool_use (id={block.id}): {block.name}({json.dumps(block.input)}){RESET}")
+    print(f"{GREY_BG}---{RESET}\n")
+
+
 def trip_planner_agentic_loop(user_message):
     """Enhanced trip planner with continuous tool calling loop"""
     system = f"""Today is {datetime.today().strftime('%Y-%m-%d')}. You are a helpful travel assistant.
@@ -21,39 +53,10 @@ If the user's request is ambiguous or missing key details (e.g. destination, dat
     max_iterations = 10
     iteration = 0
 
-    GREY_BG = "\033[48;5;252m\033[38;5;17m"
-    RESET = "\033[0m"
-
     while iteration < max_iterations:
         iteration += 1
         print(f"\n--- Iteration {iteration} ---")
-
-        print(f"\n{GREY_BG}--- Context window ({len(messages) + 1} messages) ---{RESET}")
-        for t in tools:
-            params = list(t["input_schema"].get("properties", {}).keys())
-            required = t["input_schema"].get("required", [])
-            param_str = ", ".join(f"{p}{'*' if p in required else '?'}" for p in params)
-            print(f"{GREY_BG}[function_call_definition] {t['name']}({param_str}) — {t['description']}{RESET}")
-        print(f"{GREY_BG}[system]: {system}{RESET}")
-        for msg in messages:
-            role = msg["role"]
-            content = msg["content"]
-            if isinstance(content, str):
-                print(f"{GREY_BG}[{role}]: {content}{RESET}")
-            elif isinstance(content, list):
-                has_text = any(not isinstance(b, dict) and b.type == "text" for b in content)
-                if not has_text:
-                    print(f"{GREY_BG}[{role}]:{RESET}")
-                for block in content:
-                    if isinstance(block, dict):
-                        if block.get("type") == "tool_result":
-                            print(f"{GREY_BG}[{role} (tool_result id={block['tool_use_id']})]: {block['content']}{RESET}")
-                    else:
-                        if block.type == "text":
-                            print(f"{GREY_BG}[{role}]: {block.text}{RESET}")
-                        elif block.type == "tool_use":
-                            print(f"{GREY_BG}  ↳ tool_use (id={block.id}): {block.name}({json.dumps(block.input)}){RESET}")
-        print(f"{GREY_BG}---{RESET}\n")
+        print_context_window(system, messages)
 
         response = client.messages.create(
             model="claude-sonnet-4-6",
