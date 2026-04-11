@@ -4,24 +4,17 @@ import time
 from datetime import datetime
 
 from test_simple_agent import tools, execute_function_call
+#from test_simple_agent_more_functions import tools, execute_function_call
 
 client = anthropic.Anthropic()
 
 def trip_planner_agentic_loop(user_message):
     """Enhanced trip planner with continuous tool calling loop"""
-    system = f"""Today is {datetime.today().strftime('%Y-%m-%d')}. You are a helpful trip planning assistant. Help users plan their trips by:
-            1. Checking weather conditions for destinations
-            2. Suggesting relevant points of interest based on preferences
-            3. Purchasing tickets for attractions when requested
+    system = f"""Today is {datetime.today().strftime('%Y-%m-%d')}. You are a helpful travel assistant.
 
-            IMPORTANT: Before doing anything else, you MUST confirm that the user has provided both:
-            - Travel destination (required)
-            - Travel dates (required)
+Use your available tools proactively and in sequence to give complete, actionable advice. Only call tools that are relevant to the user's request.
 
-            If either is missing, ask the user for the missing information before proceeding with any planning.
-
-            Once both are provided, provide comprehensive advice and feel free to use multiple tools in sequence to give complete trip planning assistance.
-            For example, you might check weather first, then suggest appropriate POIs based on conditions, and finally help purchase tickets for recommended attractions."""
+If the user's request is ambiguous or missing key details (e.g. destination, dates), ask for clarification before calling tools."""
 
     messages = [{"role": "user", "content": user_message}]
 
@@ -36,7 +29,11 @@ def trip_planner_agentic_loop(user_message):
         print(f"\n--- Iteration {iteration} ---")
 
         print(f"\n{GREY_BG}--- Context window ({len(messages) + 1} messages) ---{RESET}")
-        print(f"{GREY_BG}[function_call_definitions]: {json.dumps([t['name'] for t in tools])}{RESET}")
+        for t in tools:
+            params = list(t["input_schema"].get("properties", {}).keys())
+            required = t["input_schema"].get("required", [])
+            param_str = ", ".join(f"{p}{'*' if p in required else '?'}" for p in params)
+            print(f"{GREY_BG}[function_call_definition] {t['name']}({param_str}) — {t['description']}{RESET}")
         print(f"{GREY_BG}[system]: {system}{RESET}")
         for msg in messages:
             role = msg["role"]
