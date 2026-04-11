@@ -1,15 +1,13 @@
-from openai import OpenAI
-import json
+import anthropic
 import random
 
-client = OpenAI()
+client = anthropic.Anthropic()
 
-tools = [{
-    "type": "function",
-    "function": {
+tools = [
+    {
         "name": "get_weather",
         "description": "Get current weather for a given location.",
-        "parameters": {
+        "input_schema": {
             "type": "object",
             "properties": {
                 "location": {
@@ -24,14 +22,11 @@ tools = [{
             "required": ["location", "day"],
             "additionalProperties": False
         }
-    }
-},
-{
-    "type": "function",
-    "function": {
+    },
+    {
         "name": "suggest_poi",
         "description": "Suggest points of interest based on location and preferences.",
-        "parameters": {
+        "input_schema": {
             "type": "object",
             "properties": {
                 "location": {
@@ -51,14 +46,11 @@ tools = [{
             "required": ["location", "preference"],
             "additionalProperties": False
         }
-    }
-},
-{
-    "type": "function",
-    "function": {
+    },
+    {
         "name": "buy_ticket",
         "description": "Purchase tickets for attractions that require them.",
-        "parameters": {
+        "input_schema": {
             "type": "object",
             "properties": {
                 "attraction": {
@@ -82,30 +74,23 @@ tools = [{
             "additionalProperties": False
         }
     }
-}]
+]
 
 def execute_function_call(tool_call):
     """Execute the function call and return the result"""
-    tool_call_name = tool_call.function.name
-    arguments = json.loads(tool_call.function.arguments)
-    
+    tool_call_name = tool_call.name
+    arguments = tool_call.input
+
     if tool_call_name == "get_weather":
-        # Mock weather API call
         location = arguments["location"]
         day = arguments.get("day")
-
-        # In a real implementation, you would call an actual weather API
         weather_conditions = ["Sunny", "Cloudy", "Rainy", "Partly cloudy"]
-        result = f"Weather in {location} on {day}: {random.choice(weather_conditions)}, 22°C"
-        return result
-        
+        return f"Weather in {location} on {day}: {random.choice(weather_conditions)}, 22°C"
+
     elif tool_call_name == "suggest_poi":
-        # Mock POI suggestion
         location = arguments["location"]
         preference = arguments["preference"]
-        category = arguments.get("category")
-        
-        # Sample POI suggestions based on city and preference
+
         city = location.split(',')[0].strip().lower()
         poi_by_city = {
             "paris": {
@@ -117,7 +102,6 @@ def execute_function_call(tool_call):
                 "outdoor": ["Central Park", "Statue of Liberty", "Brooklyn Bridge"]
             }
         }
-        # Default POIs if city not recognized
         default_indoor = ["National Gallery", "Science Museum", "Shopping Mall"]
         default_outdoor = ["Golden Gate Bridge", "Beach Promenade", "City Park"]
 
@@ -132,83 +116,78 @@ def execute_function_call(tool_call):
             suggestions = indoor_pois[:3]
         elif preference == "outdoor":
             suggestions = outdoor_pois[:3]
-        else:  # both
+        else:
             suggestions = indoor_pois[:2] + outdoor_pois[:2]
-            
-        result = f"Suggested POIs in {location} ({preference}): {', '.join(suggestions)}"
-        return result
-        
+
+        return f"Suggested POIs in {location} ({preference}): {', '.join(suggestions)}"
+
     elif tool_call_name == "buy_ticket":
-        # Mock ticket purchase
         attraction = arguments["attraction"]
         location = arguments["location"]
         date = arguments["date"]
         quantity = arguments["quantity"]
-        
-        # Simulate ticket purchase
-        ticket_price = 25  # Mock price
-        total_cost = ticket_price * quantity
-        result = f"Successfully purchased {quantity} ticket(s) for {attraction} in {location} on {date}. Total cost: ${total_cost}"
-        return result
-    
+        total_cost = 25 * quantity
+        return f"Successfully purchased {quantity} ticket(s) for {attraction} in {location} on {date}. Total cost: ${total_cost}"
+
     return "Function not implemented"
+
 
 def trip_planner_single_round(user_message):
     """Main trip planner function"""
-    messages = [
-        {
-            "role": "system", 
-            "content": "You are a helpful trip planning assistant. Help users plan their trips by checking weather, suggesting points of interest, and buying tickets. Always be friendly and provide comprehensive travel advice."
-        },
-        {"role": "user", "content": user_message}
-    ]
-    
-    completion = client.chat.completions.create(
-        model="gpt-5.4-mini",
+    system = "You are a helpful trip planning assistant. Help users plan their trips by checking weather, suggesting points of interest, and buying tickets. Always be friendly and provide comprehensive travel advice."
+    messages = [{"role": "user", "content": user_message}]
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
+        system=system,
         messages=messages,
         tools=tools
     )
-    
-    print("Assistant:", completion.choices[0].message.content)
-    
-    # Handle tool calls if any
-    if completion.choices[0].message.tool_calls:
+
+    text_blocks = [b for b in response.content if b.type == "text"]
+    tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
+
+    if text_blocks:
+        print("Assistant:", text_blocks[0].text)
+
+    if tool_use_blocks:
         print("\nExecuting functions...")
-        
-        # Add assistant message with tool calls to conversation
-        messages.append(completion.choices[0].message)
-        
-        # Execute each tool call
-        for tool_call in completion.choices[0].message.tool_calls:
-            print(f"Calling: {tool_call.function.name}")
+        messages.append({"role": "assistant", "content": response.content})
+
+        tool_results = []
+        for tool_call in tool_use_blocks:
+            print(f"Calling: {tool_call.name}")
             result = execute_function_call(tool_call)
             print(f"Result: {result}")
-            
-            # Add function result to messages
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": tool_call.id,
                 "content": result
             })
-        
-        # Get final response with function results
-        final_completion = client.chat.completions.create(
-            model="gpt-5.4-mini",
+
+        messages.append({"role": "user", "content": tool_results})
+
+        final_response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            system=system,
             messages=messages,
             tools=tools
         )
-        
-        print("\nFinal response:")
-        print("Assistant:", final_completion.choices[0].message.content)
 
-# Example usage
+        final_text = [b for b in final_response.content if b.type == "text"]
+        print("\nFinal response:")
+        if final_text:
+            print("Assistant:", final_text[0].text)
+
+
 if __name__ == "__main__":
-    # Test cases for the trip planner
     test_queries = [
         "Any suggestions for a trip to Paris?",
         "I want to plan a trip to New York. Can you check the weather and suggest some outdoor attractions?",
     ]
-    
+
     for i, query in enumerate(test_queries, 1):
         print(f"\n{'='*50}")
         print(f"TEST QUERY {i}: {query}")

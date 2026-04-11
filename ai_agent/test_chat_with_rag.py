@@ -1,10 +1,10 @@
-from openai import AsyncOpenAI
+from anthropic import AsyncAnthropic
 from tavily import AsyncTavilyClient
 import asyncio
 import os
 from datetime import datetime
 
-client = AsyncOpenAI()
+client = AsyncAnthropic()
 tavily = AsyncTavilyClient(api_key=os.environ["TAVILY_API_KEY"])
 
 system_prompt_template = """You are Bobby, a virtual assistant created by Huajun. Today is {today}. You provide responses to questions that are clear, straightforward, and factually accurate.
@@ -38,19 +38,17 @@ async def chat_func(history):
         print(f"{GREY_BG}[{msg['role']}]: {msg['content']}{RESET}")
     print(f"{GREY_BG}---{RESET}\n")
 
-    result = await client.chat.completions.create(
-        model="gpt-5.4-mini",
-        messages=messages,
-        temperature=0.5,
-        stream=True,
-    )
-
     buffer = ""
-    async for r in result:
-        next_token = r.choices[0].delta.content
-        if next_token:
-            print(next_token, flush=True, end="")
-            buffer += next_token
+    async with client.messages.stream(
+        model="claude-sonnet-4-6",
+        max_tokens=4096,
+        system=system_prompt,
+        messages=history,
+        temperature=0.5,
+    ) as stream:
+        async for text in stream.text_stream:
+            print(text, flush=True, end="")
+            buffer += text
 
     print("\n", flush=True)
 
