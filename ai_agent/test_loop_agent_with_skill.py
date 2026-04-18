@@ -4,9 +4,14 @@ import re
 import time
 from datetime import datetime
 
+from langsmith import traceable
+from langsmith.wrappers import wrap_anthropic
+
 from test_simple_agent_more_functions import tools as travel_tools, execute_function_call
 
-client = anthropic.Anthropic()
+# Required env vars: LANGSMITH_API_KEY, LANGSMITH_TRACING=true
+# Optional: LANGSMITH_PROJECT (defaults to "default")
+client = wrap_anthropic(anthropic.Anthropic())
 
 GREY_BG = "\033[48;5;252m\033[38;5;17m"
 RESET = "\033[0m"
@@ -57,6 +62,7 @@ def execute_load_skill(skill_name):
     return f"Skill '{skill_name}' not found. Available: {[s['name'] for s in SKILLS]}"
 
 
+@traceable(name="execute_tool")
 def execute_tool(tool_call):
     if tool_call.name == "load_skill":
         return execute_load_skill(tool_call.input["skill_name"])
@@ -169,6 +175,7 @@ def compress_if_needed(messages, original_user_input, threshold=MESSAGE_THRESHOL
 
 # ── Agentic loop ──────────────────────────────────────────────────────────────
 
+@traceable(name="agentic_loop")
 def agentic_loop(user_message):
     skills_summary = "\n".join(f"- {s['name']}: {s['description']}" for s in SKILLS)
 
