@@ -1,15 +1,69 @@
 import anthropic
 import json
+import re
 import time
 from datetime import datetime
 
-#from test_simple_agent import tools, execute_function_call
-from test_simple_agent_more_functions import tools, execute_function_call
+from test_simple_agent_more_functions import tools as travel_tools, execute_function_call
 
 client = anthropic.Anthropic()
 
 GREY_BG = "\033[48;5;252m\033[38;5;17m"
 RESET = "\033[0m"
+
+
+# ── Skill loading ─────────────────────────────────────────────────────────────
+
+def parse_skill_file(filepath):
+    with open(filepath) as f:
+        content = f.read()
+    match = re.match(r'^---\n(.*?)\n---\n(.*)', content, re.DOTALL)
+    if not match:
+        return {"name": filepath, "description": "", "body": content}
+    front, body = match.group(1), match.group(2).strip()
+    name_match = re.search(r'^name:\s*(.+)$', front, re.MULTILINE)
+    desc_match = re.search(r'^description:\s*(.+)$', front, re.MULTILINE)
+    return {
+        "name": name_match.group(1).strip() if name_match else filepath,
+        "description": desc_match.group(1).strip() if desc_match else "",
+        "body": body,
+    }
+
+
+SKILLS = [parse_skill_file("flight-ticket-finder.md")]
+
+load_skill_tool = {
+    "name": "load_skill",
+    "description": "Load the full instructions for a named skill when you need detailed guidance to handle a user request.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "skill_name": {
+                "type": "string",
+                "description": "The name of the skill to load full instructions for"
+            }
+        },
+        "required": ["skill_name"]
+    }
+}
+
+tools = [load_skill_tool] + travel_tools
+
+
+def execute_load_skill(skill_name):
+    for skill in SKILLS:
+        if skill["name"] == skill_name:
+            return f"[Skill: {skill['name']}]\n\n{skill['body']}"
+    return f"Skill '{skill_name}' not found. Available: {[s['name'] for s in SKILLS]}"
+
+
+def execute_tool(tool_call):
+    if tool_call.name == "load_skill":
+        return execute_load_skill(tool_call.input["skill_name"])
+    return execute_function_call(tool_call)
+
+
+# ── Context window display ────────────────────────────────────────────────────
 
 def print_context_window(system, messages):
     print(f"\n{GREY_BG}--- Context window ({len(messages) + 1} messages) ---{RESET}")
@@ -40,7 +94,9 @@ def print_context_window(system, messages):
     print(f"{GREY_BG}---{RESET}\n")
 
 
-MESSAGE_THRESHOLD = 12
+# ── Compression ───────────────────────────────────────────────────────────────
+
+MESSAGE_THRESHOLD = 100
 
 
 def _has_pending_tool_use(messages):
@@ -111,18 +167,19 @@ def compress_if_needed(messages, original_user_input, threshold=MESSAGE_THRESHOL
     return compressed
 
 
-def trip_planner_agentic_loop(user_message):
-    """Enhanced trip planner with continuous tool calling loop"""
-    #relevant_memories = search_memories(user_message)
-    memory_section = ""
-    #if relevant_memories:
-    #    memory_section = "\n\nRelevant context from past interactions:\n" + "\n".join(f"- {m}" for m in relevant_memories)
+# ── Agentic loop ──────────────────────────────────────────────────────────────
 
-    system = f"""Today is {datetime.today().strftime('%Y-%m-%d')}. You are a helpful travel assistant.{memory_section}
+def agentic_loop(user_message):
+    skills_summary = "\n".join(f"- {s['name']}: {s['description']}" for s in SKILLS)
 
-Use your available tools proactively and in sequence to give complete, actionable advice. Only call tools that are relevant to the user's request.
+    system = f"""Today is {datetime.today().strftime('%Y-%m-%d')}. You are a helpful travel assistant.
 
-If the user's request is ambiguous or missing key details (e.g. destination, dates), ask for clarification before calling tools."""
+You have access to specialized skills. When a user request matches a skill, call load_skill first to get the full instructions before proceeding.
+
+Available skills:
+{skills_summary}
+
+For requests not covered by a skill, use your available tools directly and apply sensible defaults."""
 
     messages = [{"role": "user", "content": user_message}]
 
@@ -155,7 +212,7 @@ If the user's request is ambiguous or missing key details (e.g. destination, dat
             tool_results = []
             for tool_call in tool_use_blocks:
                 print(f"  → Calling: {tool_call.name}")
-                result = execute_function_call(tool_call)
+                result = execute_tool(tool_call)
                 print(f"  ← Result: {result}")
                 tool_results.append({
                     "type": "tool_result",
@@ -179,4 +236,4 @@ If the user's request is ambiguous or missing key details (e.g. destination, dat
 
 if __name__ == "__main__":
     user_input = input("> ")
-    trip_planner_agentic_loop(user_input)
+    agentic_loop(user_input)
