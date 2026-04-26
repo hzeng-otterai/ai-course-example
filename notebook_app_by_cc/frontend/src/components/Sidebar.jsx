@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getNotebooks, getNotebook, createNotebook, deleteNotebook, updateNotebook } from '../api/notebooks'
@@ -12,10 +12,17 @@ export default function Sidebar({ activeNotebookId, activePageId, onSelectPage }
 
   const [editingNotebook, setEditingNotebook] = useState(null)
   const [newNotebookTitle, setNewNotebookTitle] = useState('')
+  const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 250)
+    return () => clearTimeout(timer)
+  }, [query])
 
   const { data: notebooks = [] } = useQuery({
-    queryKey: ['notebooks'],
-    queryFn: () => getNotebooks().then((r) => r.data),
+    queryKey: ['notebooks', debouncedQuery],
+    queryFn: () => getNotebooks(debouncedQuery ? { search: debouncedQuery } : undefined).then((r) => r.data),
   })
 
   const createNotebookMutation = useMutation({
@@ -79,6 +86,16 @@ export default function Sidebar({ activeNotebookId, activePageId, onSelectPage }
         <p className="text-gray-400 text-xs mt-0.5 truncate">{user?.username}</p>
       </div>
 
+      <div className="px-3 py-2 border-b border-gray-700">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search notebooks..."
+          className="w-full bg-gray-800 text-gray-200 text-sm rounded-lg px-3 py-1.5 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+      </div>
+
       <div className="flex-1 overflow-y-auto">
         <div className="px-3 pt-3 pb-1">
           <button
@@ -88,6 +105,10 @@ export default function Sidebar({ activeNotebookId, activePageId, onSelectPage }
             <span className="text-lg leading-none">+</span> New notebook
           </button>
         </div>
+
+        {notebooks.length === 0 && debouncedQuery && (
+          <p className="px-4 py-3 text-xs text-gray-500">No notebooks found.</p>
+        )}
 
         {notebooks.map((nb) => (
           <div key={nb.id}>

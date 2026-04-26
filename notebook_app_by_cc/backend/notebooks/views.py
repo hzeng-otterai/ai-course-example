@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -47,6 +48,8 @@ def me(request):
 
 class NotebookListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
+    filter_backends = [SearchFilter]
+    search_fields = ['title', 'pages__title']
 
     def get_serializer_class(self):
         if self.request.method == "GET":

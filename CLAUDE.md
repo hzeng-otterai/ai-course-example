@@ -35,6 +35,23 @@ gunicorn src.app:app        # http://localhost:50505
 docker-compose up           # alternatively
 ```
 
+### notebook_app_by_cc
+
+```bash
+# Backend (Django) — http://localhost:8000
+cd notebook_app_by_cc/backend
+pip install -r requirements.txt
+python manage.py migrate        # first time only
+python manage.py runserver
+
+# Frontend (React + Vite) — http://localhost:5173
+cd notebook_app_by_cc/frontend
+npm install
+npm run dev
+```
+
+Start the backend first; Vite proxies `/api/*` to `localhost:8000`. See `notebook_app_by_cc/CLAUDE.md` for full architecture details.
+
 ### fullstack_flask_minimal
 
 ```bash
@@ -53,6 +70,7 @@ flask --app src.app run     # http://0.0.0.0:5000
 | `fullstack_flask/` | Production-style Flask app with RAG, streaming, DB persistence |
 | `fullstack_flask_minimal/` | Minimal Flask starter template |
 | `ai_agent/` | Agentic loops with tool execution and context window visualization (Anthropic SDK, `claude-sonnet-4-6`) |
+| `notebook_app_by_cc/` | Full-stack notebook app: Django REST Framework backend + React 19 SPA frontend with JWT auth and rich text editing |
 
 ### Agentic Loop Pattern (`ai_agent/`)
 
