@@ -33,7 +33,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-sm p-8">
         <h1 className="text-2xl font-semibold text-gray-900 mb-1">Create account</h1>
-        <p className="text-sm text-gray-500 mb-6">Start your notebook today</p>
+        <p className="text-sm text-gray-500 mb-6">Start using Greatnotes today</p>
 
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">

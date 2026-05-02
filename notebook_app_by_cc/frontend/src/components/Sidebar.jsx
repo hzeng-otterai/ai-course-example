@@ -84,7 +84,7 @@ export default function Sidebar({ activeNotebookId, activePageId, onSelectPage }
   return (
     <aside className="w-64 bg-gray-900 text-gray-200 flex flex-col h-screen flex-shrink-0">
       <div className="px-4 py-4 border-b border-gray-700">
-        <span className="text-white font-semibold text-lg">Notebooks</span>
+        <span className="text-white font-semibold text-lg">Greatnotes</span>
         <p className="text-gray-400 text-xs mt-0.5 truncate">{user?.username}</p>
       </div>
 
