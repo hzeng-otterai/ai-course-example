@@ -21,8 +21,16 @@ const TOOLBAR_BUTTONS = [
   { label: '↪', title: 'Redo', action: (e) => e.chain().focus().redo().run(), active: () => false },
 ]
 
+function getWordCharCount(editor) {
+  const text = editor.getText()
+  const chars = text.length
+  const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length
+  return { words, chars }
+}
+
 export default function PageEditor({ page }) {
   const [saveStatus, setSaveStatus] = useState(null)
+  const [wordCharCount, setWordCharCount] = useState({ words: 0, chars: 0 })
   const saveTimer = useRef(null)
 
   const save = useCallback(
@@ -45,7 +53,11 @@ export default function PageEditor({ page }) {
       Placeholder.configure({ placeholder: 'Start writing...' }),
     ],
     content: page.content && Object.keys(page.content).length > 0 ? page.content : '',
+    onCreate: ({ editor }) => {
+      setWordCharCount(getWordCharCount(editor))
+    },
     onUpdate: ({ editor }) => {
+      setWordCharCount(getWordCharCount(editor))
       clearTimeout(saveTimer.current)
       saveTimer.current = setTimeout(() => {
         save(editor.getJSON())
@@ -59,6 +71,7 @@ export default function PageEditor({ page }) {
       if (JSON.stringify(editor.getJSON()) !== JSON.stringify(newContent)) {
         editor.commands.setContent(newContent, false)
       }
+      setWordCharCount(getWordCharCount(editor))
     }
   }, [page.id])
 
@@ -88,6 +101,10 @@ export default function PageEditor({ page }) {
 
       <div className="flex-1 overflow-y-auto px-8 py-6">
         <EditorContent editor={editor} className="tiptap prose max-w-none min-h-full" />
+      </div>
+
+      <div className="px-8 py-2 border-t border-gray-100 text-xs text-gray-400 select-none">
+        {wordCharCount.words.toLocaleString()} words · {wordCharCount.chars.toLocaleString()} chars
       </div>
     </div>
   )

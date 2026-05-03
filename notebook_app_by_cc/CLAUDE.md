@@ -39,6 +39,20 @@ Single Django app `notebooks` handles all logic. Key files:
 - `notebooks/serializers.py` — separate list vs. detail serializers (list excludes page content); `share_token` is a computed `SerializerMethodField`
 - `notebooks/permissions.py` — `IsNotebookOwner` and `IsPageOwner` enforce object-level ownership
 
+**Ownership conventions:**
+
+Ownership is anchored at `Notebook.user` (FK → `auth.User`), set once in `perform_create` and never reassigned. The full ownership chain is `ShareLink → Page → Notebook → User`.
+
+Views enforce ownership at two layers:
+1. `get_queryset` filters to `user=request.user` so cross-user lookups return 404, not 403
+2. Detail views also apply `IsNotebookOwner` / `IsPageOwner` as a second check on the resolved object
+
+`PageListCreateView` and `page_share` skip the permission class and instead call `get_object_or_404(Notebook, pk=..., user=request.user)` inline — same effect, just shorter.
+
+The shared-page endpoint (`/api/shared/<token>/`) is `AllowAny` by design; it serves a read-only snapshot via `SharedPageSerializer` and never exposes the owner's identity.
+
+When adding new views that touch notebooks or pages, follow the same two-layer pattern: filter in `get_queryset` **and** add the relevant permission class to `permission_classes`.
+
 **URL structure:**
 ```
 /api/auth/register/
@@ -60,10 +74,25 @@ Single Django app `notebooks` handles all logic. Key files:
 - `contexts/AuthContext.jsx` — global auth state; stores JWT access/refresh tokens in `localStorage`
 - `api/client.js` — Axios instance with interceptors: adds `Authorization: Bearer` header on every request; on 401, queues requests and attempts token refresh; on refresh failure, clears storage and redirects to `/login`
 - `api/auth.js`, `api/notebooks.js`, `api/pages.js` — thin API method modules
-- `components/PageEditor.jsx` — TipTap rich text editor with debounced auto-save via React Query mutation
+- `components/PageEditor.jsx` — TipTap rich text editor with debounced auto-save (see conventions below)
+- `components/AutoSaveIndicator.jsx` — displays save state driven by `saveStatus` prop
 - `components/ShareModal.jsx` — creates/revokes `ShareLink`; parent invalidates queries on close
 
 **Data flow:** Vite proxies `/api/*` → `http://localhost:8000` in dev. React Query manages server state with keys like `['notebook', id]` and `['page', id]`; mutations invalidate relevant queries on success.
+
+**Auto-save conventions (`PageEditor.jsx`):**
+
+Auto-save is a plain `useRef` debounce — no React Query mutation, no `useMutation`. The flow:
+
+1. TipTap's `onUpdate` fires on every editor change, clears the pending timer, and starts a new 1000 ms timer.
+2. After 1 s of inactivity the timer calls `save(editor.getJSON())`, which PATCHes `/api/pages/<id>/` with `{ content }`.
+3. `saveStatus` state drives `AutoSaveIndicator`: `null` (idle) → `'saving'` → `'saved'` (auto-clears after 2 s) or `'error'`.
+
+Page-switch behaviour: a `useEffect` keyed on `page.id` resets editor content via `editor.commands.setContent(newContent, false)`. The `false` flag suppresses the `onUpdate` event, preventing a spurious save on page load.
+
+Cleanup: a second `useEffect` returns `() => clearTimeout(saveTimer.current)` to cancel any pending save on unmount.
+
+When modifying auto-save logic, preserve the debounce-on-every-keystroke + suppress-on-load pattern. The 1 s delay is intentional — frequent POSTing on each keystroke is unnecessary given TipTap's in-memory state.
 
 ### Auth Flow
 
